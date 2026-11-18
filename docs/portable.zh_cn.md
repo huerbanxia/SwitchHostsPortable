@@ -16,30 +16,31 @@
 
 ```
 SwitchHostsPortable/
-├── SwitchHostsPortable.exe     ← 双击此文件启动（主程序副本）
 ├── help.html                   ← 简要说明（浏览器打开）
 ├── App/                        ← 只读程序体
 │   ├── AppInfo/
 │   │   ├── appinfo.ini         ← 便携元数据
 │   │   └── appicon.ico
 │   └── SwitchHosts/
-│       ├── SwitchHosts.exe     ← 真正的应用二进制
+│       ├── SwitchHosts.exe     ← 应用二进制（**双击此文件启动**）
 │       └── .portable           ← 便携模式标记文件（勿删）
-└── Data/                       ← 可写用户数据
-    ├── Logs/                   ← 应用日志
-    ├── SwitchHosts/            ← 数据根：hosts 列表、配置、窗口状态、历史
-    └── WebView2/               ← WebView2 浏览器缓存（已重定向到此处）
+├── Data/                       ← 用户数据（**要备份的就是这里**）
+│   ├── SwitchHosts/            ← 数据根：hosts 列表、配置、窗口状态、历史
+│   └── Logs/                   ← 应用日志
+└── Cache/                      ← 可再生缓存（可安全删除，不影响数据）
+    └── WebView2/              ← WebView2 浏览器缓存（GPU 缓存、Cookie、Local Storage）
 ```
 
 - **不写系统/用户目录**：不会在 `%APPDATA%`、`%LOCALAPPDATA%`、`%TEMP%`、
   `~/.SwitchHosts` 写入任何东西（唯一例外是系统 hosts 文件本身，见下文）。
   - 应用日志 → `Data/Logs`
   - 配置与 hosts 数据 → `Data/SwitchHosts`
-  - **WebView2 浏览器缓存（Cookie、GPU 缓存、Local Storage 等）→ `Data/WebView2`**
+  - **WebView2 浏览器缓存（Cookie、GPU 缓存、Local Storage 等）→ `Cache/WebView2`**
     —— WebView2 默认会把浏览器 profile 写到
     `%LOCALAPPDATA%\<identifier>\EBWebView`，绿色版通过
-    `WebviewWindowBuilder::data_directory` 把它重定向进 `Data/WebView2`，
+    `WebviewWindowBuilder::data_directory` 把它重定向进 `Cache/WebView2`，
     因此连浏览器缓存也算在程序目录内。
+  - **`Cache/` 是可再生缓存，删除它不会丢失任何配置**；只有 `Data/` 是需要备份的数据。
 - **备份 = 复制整个目录** `SwitchHostsPortable/`，到新机器/新位置解压即用。
 
 ---
@@ -94,7 +95,7 @@ npm run tauri:build:portable
 - **重装系统后恢复**：
   1. 绿色版目录放在**非系统盘**（如 `D:\`）。
   2. 系统盘重装不影响 `D:\SwitchHostsPortable`。
-  3. 重装后到绿色版目录双击 `SwitchHostsPortable.exe` 即可，数据仍在
+  3. 重装后到绿色版目录双击 `App/SwitchHosts/SwitchHosts.exe` 即可，数据仍在
      `Data/SwitchHosts`，**无需重新指定任何配置路径**（不再像安装版那样依赖
      `%APPDATA%` 里的指针文件——重装一清就丢）。
 

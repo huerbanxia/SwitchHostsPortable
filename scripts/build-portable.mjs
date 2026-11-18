@@ -12,20 +12,26 @@
  * Result layout:
  *
  *   dist/portable/SwitchHostsPortable/
- *   ├── SwitchHostsPortable.exe     <- copy of the app exe (double-click entry)
  *   ├── help.html                   <- brief portable README (open in browser)
  *   ├── App/
  *   │   ├── AppInfo/
  *   │   │   ├── appinfo.ini         <- portable metadata
  *   │   │   └── appicon.ico         <- desktop icon
  *   │   └── SwitchHosts/
- *   │       ├── SwitchHosts.exe     <- actual Tauri app binary
+ *   │       ├── SwitchHosts.exe     <- actual Tauri app binary (double-click entry)
  *   │       └── .portable           <- marker file that flips portable mode on
- *   └── Data/                        <- writable user data (created on first run)
- *       ├── SwitchHosts/             <- data root (manifest, entries, config, state, history)
- *       └── Logs/                    <- application logs
+ *   ├── Data/                        <- user data (mandatory, survives cache wipe)
+ *   │   ├── SwitchHosts/             <- data root (manifest, entries, config, state, history)
+ *   │   └── Logs/                    <- application logs
+ *   └── Cache/                        <- regenerable cache, safe to delete without losing data
+ *       └── WebView2/                <- WebView2 browser profile (GPU cache, cookies, localStorage)
  *
- * Run after `tauri build --bundles none` via:
+ * Only one app binary exists, at App/SwitchHosts/SwitchHosts.exe — the
+ * portable detection (is_portable) recognises this location via the App/+
+ * Data/+Cache layout and the .portable marker, so there is no duplicated exe
+ * at the green root.
+ *
+ * Run after `tauri build --no-bundle` via:
  *   npm run tauri:build:portable
  *
  * On non-Windows platforms this script warns and exits (portable layout is
@@ -74,8 +80,10 @@ const appInfoDir = join(appDir, 'AppInfo')
 const dataDir = join(green, 'Data')
 const logDir = join(dataDir, 'Logs')
 const dataRoot = join(dataDir, 'SwitchHosts')
+const cacheDir = join(green, 'Cache')
+const webviewDir = join(cacheDir, 'WebView2')
 
-for (const d of [productDir, appInfoDir, dataRoot, logDir]) {
+for (const d of [productDir, appInfoDir, dataRoot, logDir, webviewDir]) {
   mkdirSync(d, { recursive: true })
 }
 
@@ -83,10 +91,6 @@ for (const d of [productDir, appInfoDir, dataRoot, logDir]) {
 // to scope all data under `Data/`).
 copyFileSync(appExe, join(productDir, 'SwitchHosts.exe'))
 writeFileSync(join(productDir, '.portable'), '')
-
-// Top-level double-click entry — a plain copy of the same binary. Placed at
-// the green root so the app sees `App/SwitchHosts` as its parent logic.
-copyFileSync(appExe, join(green, 'SwitchHostsPortable.exe'))
 
 // Portable metadata (AppInfo) + desktop icon.
 const appIcon = join(root, 'src-tauri', 'icons', 'icon.ico')
@@ -107,7 +111,7 @@ writeFileSync(
     'Homepage=https://github.com/oldj/SwitchHosts',
     '',
     '[Control]',
-    'Start=SwitchHostsPortable.exe',
+    'Start=App/SwitchHosts/SwitchHosts.exe',
   ].join('\r\n') + '\r\n',
 )
 
@@ -119,8 +123,9 @@ writeFileSync(
 code{background:#f2f2f2;padding:0 4px;border-radius:4px}li{margin:6px 0}</style>
 <h2>SwitchHosts 绿色版（v${version}）</h2>
 <ul>
-<li><b>绿色运行</b>：无安装、无注册表项、不写用户目录。双击 \`SwitchHostsPortable.exe\` 即可使用。</li>
+<li><b>绿色运行</b>：无安装、无注册表项、不写用户目录。双击 \`App/SwitchHosts/SwitchHosts.exe\` 即可使用（在桌面建一个快捷方式更方便）。</li>
 <li><b>数据目录</b>：所有数据（hosts 列表、配置、窗口状态、历史）固定在 <code>Data/SwitchHosts</code>，日志在 <code>Data/Logs</code>。备份/迁移 = 复制整个绿色版目录。</li>
+<li><b>缓存目录</b>：<code>Cache/WebView2</code> 存放 WebView2 浏览器缓存（GPU 缓存、Cookie、Local Storage 等），属于可再生数据，<b>删除不影响你的 hosts 配置</b>。<code>Data/</code> 才是你要备份的数据。</li>
 <li><b>开机自启</b>：绿色版不支持注册开机自启（避免写入用户注册表）。</li>
 <li><b>自动更新</b>：绿色版关闭在线自动更新；"升级"＝用新版本整体替换本目录。</li>
 <li><b>修改 hosts 文件</b>：改写系统 hosts 仍需管理员权限，程序会照常弹出 UAC 授权。</li>
@@ -135,5 +140,5 @@ const sizeExe = existsSync(join(productDir, 'SwitchHosts.exe'))
 
 console.log(`[portable] SwitchHosts v${version} portable build assembled in:`)
 console.log(`  ${green}`)
-console.log(`  exe: SwitchHostsPortable.exe (${(sizeExe / 1024 / 1024).toFixed(1)} MiB)`)
+console.log(`  exe: App/SwitchHosts/SwitchHosts.exe (${(sizeExe / 1024 / 1024).toFixed(1)} MiB)`)
 console.log(`  data: Data/SwitchHosts (created on first run)`)

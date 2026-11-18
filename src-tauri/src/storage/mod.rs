@@ -160,7 +160,8 @@ impl AppState {
         // Ensure the portable WebView2 user-data directory exists. WebView2
         // requires the folder passed to `data_directory` to already exist at
         // window creation; create it here so `lifecycle::create_main_window`
-        // can point WebView2's cache into the green `Data/` tree instead of
+        // can point WebView2's cache into the green `Cache/WebView2` tree
+        // (regenerable, deletable without losing data) instead of
         // `%LOCALAPPDATA%`.
         if portable {
             if let Some(webview_dir) = portable::portable_webview_dir(
