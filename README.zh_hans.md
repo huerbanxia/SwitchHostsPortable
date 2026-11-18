@@ -1,6 +1,8 @@
 # SwitchHosts Portable（绿色版）
 
 > **免安装 · 绿色便携** · 数据随程序走，整个目录可整体移动 / 复制 / 备份。
+>
+> 🤖 本绿色（便携）化改造由 **AI 辅助完成**（在 DeepSeek 语音会话中逐步实现）。
 
 本仓库是对 [oldj/SwitchHosts](https://github.com/oldj/SwitchHosts) 的**绿色（便携）版**重新打包。解压即用，不写注册表、不在用户目录（`%APPDATA%` / `%LOCALAPPDATA%` / `%TEMP%`）遗留任何数据。
 
