@@ -30,7 +30,7 @@ SwitchHostsPortable/
 ## 下载（正式版）
 
 前往 [GitHub Releases](https://github.com/huerbanxia/SwitchHostsPortable/releases) 下载
-`SwitchHostsPortable-v5.0.3.zip`，解压到任意非系统盘目录，双击
+最新的 `SwitchHostsPortable.zip` 压缩包，解压到任意非系统盘目录，双击
 `App/SwitchHosts/SwitchHostsPortable.exe` 即可使用。
 
 ## 构建绿色版
