@@ -616,7 +616,7 @@ pub fn create_main_window<R: Runtime>(
 
     let theme_pref = configured_theme(app_state);
     let initial_theme = theme_pref.unwrap_or(Theme::Light);
-    let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::App("/".into()))
+    let mut builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::App("/".into()))
         .title("SwitchHosts")
         .min_inner_size(300.0, 200.0)
         .resizable(true)
@@ -627,6 +627,23 @@ pub fn create_main_window<R: Runtime>(
         // dragstart inside the webview, breaking the hosts tree's
         // HTML5 DnD reordering on the frontend.
         .disable_drag_drop_handler();
+
+    // Portable ("green") builds redirect WebView2's browser profile into the
+    // green `Data/WebView2` directory. Without this WebView2 would cache
+    // cookies/GPU/origin data to `%LOCALAPPDATA%/<identifier>/EBWebView` on
+    // the system drive — a "fake portable" that leaves cache behind. The
+    // folder is created during `AppState::bootstrap`.
+    if app_state.is_portable {
+        if let Some(webview_dir) = crate::storage::portable::portable_webview_dir(
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+                .as_deref()
+                .unwrap_or(std::path::Path::new(".")),
+        ) {
+            builder = builder.data_directory(webview_dir);
+        }
+    }
 
     #[cfg(target_os = "macos")]
     let mut builder = builder

@@ -26,12 +26,20 @@ SwitchHostsPortable/
 │       ├── SwitchHosts.exe     ← 真正的应用二进制
 │       └── .portable           ← 便携模式标记文件（勿删）
 └── Data/                       ← 可写用户数据
+    ├── Logs/                   ← 应用日志
     ├── SwitchHosts/            ← 数据根：hosts 列表、配置、窗口状态、历史
-    └── Logs/                   ← 应用日志
+    └── WebView2/               ← WebView2 浏览器缓存（已重定向到此处）
 ```
 
 - **不写系统/用户目录**：不会在 `%APPDATA%`、`%LOCALAPPDATA%`、`%TEMP%`、
   `~/.SwitchHosts` 写入任何东西（唯一例外是系统 hosts 文件本身，见下文）。
+  - 应用日志 → `Data/Logs`
+  - 配置与 hosts 数据 → `Data/SwitchHosts`
+  - **WebView2 浏览器缓存（Cookie、GPU 缓存、Local Storage 等）→ `Data/WebView2`**
+    —— WebView2 默认会把浏览器 profile 写到
+    `%LOCALAPPDATA%\<identifier>\EBWebView`，绿色版通过
+    `WebviewWindowBuilder::data_directory` 把它重定向进 `Data/WebView2`，
+    因此连浏览器缓存也算在程序目录内。
 - **备份 = 复制整个目录** `SwitchHostsPortable/`，到新机器/新位置解压即用。
 
 ---

@@ -157,6 +157,28 @@ impl AppState {
         }
         paths.cleanup_tmp_files();
 
+        // Ensure the portable WebView2 user-data directory exists. WebView2
+        // requires the folder passed to `data_directory` to already exist at
+        // window creation; create it here so `lifecycle::create_main_window`
+        // can point WebView2's cache into the green `Data/` tree instead of
+        // `%LOCALAPPDATA%`.
+        if portable {
+            if let Some(webview_dir) = portable::portable_webview_dir(
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+                    .as_deref()
+                    .unwrap_or(std::path::Path::new(".")),
+            ) {
+                if let Err(e) = std::fs::create_dir_all(&webview_dir) {
+                    log::warn!(
+                        "failed to create portable WebView2 data directory {}: {e}",
+                        webview_dir.display()
+                    );
+                }
+            }
+        }
+
         if let Some(recovery) = &data_dir_recovery {
             log::warn!(
                 "custom data directory unavailable ({recovery:?}) — using default root and skipping migration; the user will be prompted"

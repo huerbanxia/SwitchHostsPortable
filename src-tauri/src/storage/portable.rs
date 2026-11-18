@@ -132,6 +132,20 @@ pub fn portable_log_dir(exe_dir: &Path) -> Option<PathBuf> {
     green_root(exe_dir).map(|root| root.join(DATA_DIR).join(LOG_DIR_NAME))
 }
 
+/// The portable WebView2 user-data directory: `<green>/Data/WebView2`.
+///
+/// WebView2 normally caches its browser profile (cookies, GPU cache, origin
+/// trials, localStorage) to `%LOCALAPPDATA%/<identifier>/EBWebView` — a
+/// hardcoded system location that cannot be changed by config. A portable
+/// build must redirect it into the green `Data/` tree too, otherwise the
+/// green directory is a "fake portable" that quietly leaves cache on the
+/// system drive. This path is fed to `WebviewWindowBuilder::data_directory`
+/// in `lifecycle.rs`, which is the only place WebView2's user-data folder
+/// can be set per window.
+pub fn portable_webview_dir(exe_dir: &Path) -> Option<PathBuf> {
+    green_root(exe_dir).map(|root| root.join(DATA_DIR).join("WebView2"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
