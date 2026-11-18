@@ -48,12 +48,6 @@ pub const DATA_ROOT_NAME: &str = "SwitchHosts";
 /// Logs sub-directory under `Data/`.
 pub const LOG_DIR_NAME: &str = "Logs";
 
-/// Cache sub-directory at the green root, sibling to `App/` and `Data/`.
-/// Everything under this folder is regenerable data (e.g. the WebView2
-/// browser cache) that can be deleted safely without losing any user config —
-/// a clear signal to users which parts of the green directory are disposable.
-pub const CACHE_DIR_NAME: &str = "Cache";
-
 /// Whether a `.portable` marker is present at or above `exe_dir`, the
 /// `SWITCHHOSTS_PORTABLE` env var is set, **or** `exe_dir` sits inside the
 /// PortableApps-style layout (`App/` + `Data/` siblings).
@@ -138,20 +132,19 @@ pub fn portable_log_dir(exe_dir: &Path) -> Option<PathBuf> {
     green_root(exe_dir).map(|root| root.join(DATA_DIR).join(LOG_DIR_NAME))
 }
 
-/// The portable WebView2 user-data directory: `<green>/Cache/WebView2`.
+/// The portable WebView2 user-data directory: `<green>/Data/WebView2`.
 ///
 /// WebView2 normally caches its browser profile (cookies, GPU cache, origin
 /// trials, localStorage) to `%LOCALAPPDATA%/<identifier>/EBWebView` — a
 /// hardcoded system location that cannot be changed by config. A portable
 /// build must redirect it into the green directory too, otherwise the green
 /// build is a "fake portable" that quietly leaves cache on the system drive.
-/// The cache is placed under `<green>/Cache/` — a directory at the same level
-/// as `Data/` that carries the explicit meaning "regenerable cache, safe to
-/// delete without losing data". This path is fed to
-/// `WebviewWindowBuilder::data_directory` in `lifecycle.rs`, which is the
-/// only place WebView2's user-data folder can be set per window.
+/// Per the PortableApps convention everything writable lives under `Data/`, so
+/// the browser cache sits at `Data/WebView2` like logs and user data. This
+/// path is fed to `WebviewWindowBuilder::data_directory` in `lifecycle.rs`,
+/// which is the only place WebView2's user-data folder can be set per window.
 pub fn portable_webview_dir(exe_dir: &Path) -> Option<PathBuf> {
-    green_root(exe_dir).map(|root| root.join(CACHE_DIR_NAME).join("WebView2"))
+    green_root(exe_dir).map(|root| root.join(DATA_DIR).join("WebView2"))
 }
 
 #[cfg(test)]

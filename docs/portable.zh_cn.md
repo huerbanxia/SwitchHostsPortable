@@ -16,31 +16,31 @@
 
 ```
 SwitchHostsPortable/
-├── help.html                   ← 简要说明（浏览器打开）
-├── App/                        ← 只读程序体
+├── help.html                     ← 简要说明（浏览器打开）
+├── App/                          ← 只读程序体
 │   ├── AppInfo/
-│   │   ├── appinfo.ini         ← 便携元数据
+│   │   ├── appinfo.ini           ← 便携元数据
 │   │   └── appicon.ico
 │   └── SwitchHosts/
-│       ├── SwitchHosts.exe     ← 应用二进制（**双击此文件启动**）
-│       └── .portable           ← 便携模式标记文件（勿删）
-├── Data/                       ← 用户数据（**要备份的就是这里**）
-│   ├── SwitchHosts/            ← 数据根：hosts 列表、配置、窗口状态、历史
-│   └── Logs/                   ← 应用日志
-└── Cache/                      ← 可再生缓存（可安全删除，不影响数据）
-    └── WebView2/              ← WebView2 浏览器缓存（GPU 缓存、Cookie、Local Storage）
+│       ├── SwitchHostsPortable.exe  ← 应用二进制（**双击此文件启动**）
+│       └── .portable             ← 便携模式标记文件（勿删）
+└── Data/                         ← 一切可写数据（PortableApps 规范）
+    ├── SwitchHosts/              ← 数据根：hosts 列表、配置、窗口状态、历史
+    ├── Logs/                     ← 应用日志
+    └── WebView2/                 ← WebView2 浏览器缓存（可再生，可删）
 ```
 
 - **不写系统/用户目录**：不会在 `%APPDATA%`、`%LOCALAPPDATA%`、`%TEMP%`、
   `~/.SwitchHosts` 写入任何东西（唯一例外是系统 hosts 文件本身，见下文）。
   - 应用日志 → `Data/Logs`
   - 配置与 hosts 数据 → `Data/SwitchHosts`
-  - **WebView2 浏览器缓存（Cookie、GPU 缓存、Local Storage 等）→ `Cache/WebView2`**
+  - **WebView2 浏览器缓存（Cookie、GPU 缓存、Local Storage 等）→ `Data/WebView2`**
     —— WebView2 默认会把浏览器 profile 写到
     `%LOCALAPPDATA%\<identifier>\EBWebView`，绿色版通过
-    `WebviewWindowBuilder::data_directory` 把它重定向进 `Cache/WebView2`，
-    因此连浏览器缓存也算在程序目录内。
-  - **`Cache/` 是可再生缓存，删除它不会丢失任何配置**；只有 `Data/` 是需要备份的数据。
+    `WebviewWindowBuilder::data_directory` 把它重定向进 `Data/WebView2`，
+    因此连浏览器缓存也落在程序目录内。
+  - **`Data/WebView2` 是可再生缓存，删除不会丢失任何配置**；`Data/SwitchHosts`
+    与 `Data/Logs` 才是需要备份的数据。
 - **备份 = 复制整个目录** `SwitchHostsPortable/`，到新机器/新位置解压即用。
 
 ---
@@ -50,7 +50,7 @@ SwitchHostsPortable/
 两种信号任一命中即进入便携模式（二者取或）：
 
 1. 启动前设置环境变量 `SWITCHHOSTS_PORTABLE`（任意非空值）。
-2. `App/SwitchHosts/SwitchHosts.exe` 或其上级目录中存在 `.portable` 标记文件。
+2. `App/SwitchHosts/SwitchHostsPortable.exe` 或其上级目录中存在 `.portable` 标记文件。
 
 绿色版构建脚本天然放好了 `.portable` 标记，所以解压后双击即自动进入便携模式，
 无需手动设置环境变量。
@@ -70,13 +70,13 @@ npm ci
 npm run typecheck
 npm run test:unit
 
-# 3. 构建绿色版（等价于：tauri build --bundles none && npm run build:portable）
+# 3. 构建绿色版（等价于：tauri build --no-bundle && npm run build:portable）
 npm run tauri:build:portable
 ```
 
-产物输出到 `dist/portable/SwitchHostsPortable/`。
+产物输出到 `dist/SwitchHostsPortable/`。
 
-> 说明：`--bundles none` 只生成可执行的 release 二进制（不生成 NSIS/MSI
+> 说明：`--no-bundle` 只生成可执行的 release 二进制（不生成 NSIS/MSI
 > 安装包），随后由 `scripts/build-portable.mjs` 编排成上文的 `App/ + Data/` 布局。
 
 也可用安装版命令产出安装包：`npm run tauri:build`（不受绿色版改动影响）。
@@ -95,7 +95,7 @@ npm run tauri:build:portable
 - **重装系统后恢复**：
   1. 绿色版目录放在**非系统盘**（如 `D:\`）。
   2. 系统盘重装不影响 `D:\SwitchHostsPortable`。
-  3. 重装后到绿色版目录双击 `App/SwitchHosts/SwitchHosts.exe` 即可，数据仍在
+  3. 重装后到绿色版目录双击 `App/SwitchHosts/SwitchHostsPortable.exe` 即可，数据仍在
      `Data/SwitchHosts`，**无需重新指定任何配置路径**（不再像安装版那样依赖
      `%APPDATA%` 里的指针文件——重装一清就丢）。
 
