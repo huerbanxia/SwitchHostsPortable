@@ -2233,6 +2233,14 @@ pub async fn get_data_dir(state: State<'_, AppState>, _args: Args) -> Result<Val
     Ok(json!(state.paths.root.display().to_string()))
 }
 
+/// Whether the app was started in portable ("green") mode. The renderer uses
+/// this to hide installer-only surfaces (e.g. the launch-at-login toggle,
+/// which portable builds deliberately do not support).
+#[tauri::command]
+pub fn is_portable(state: State<'_, AppState>) -> bool {
+    state.is_portable
+}
+
 /// Startup status for the renderer: the active data directory, the default
 /// location, whether a reset would actually change anything (`can_reset`),
 /// and a `recovery` descriptor when the recorded custom directory is
@@ -2261,6 +2269,7 @@ pub async fn get_data_dir_status(
         "active_dir": state.paths.root.display().to_string(),
         "default_dir": paths::default_root()?.display().to_string(),
         "can_reset": data_dir_pointer::pointer_exists(),
+        "is_portable": state.is_portable,
         "recovery": recovery,
     }))
 }

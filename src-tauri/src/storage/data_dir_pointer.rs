@@ -43,8 +43,19 @@ struct PointerEnvelope {
 /// Absolute path of the pointer file, e.g. on macOS
 /// `~/Library/Application Support/net.oldj.switchhosts/data_dir.json`.
 /// `None` when the platform has no config dir (e.g. a headless Linux box
-/// with no `$XDG_CONFIG_HOME`/`$HOME`).
+/// with no `$XDG_CONFIG_HOME`/`$HOME`), and — importantly — in **portable
+/// ("green") mode**, where the data root is fixed at `Data/SwitchHosts`
+/// and there is no custom-directory pointer to store or read.
 pub fn pointer_path() -> Option<PathBuf> {
+    if super::portable::is_portable(
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .as_deref(),
+        Some(std::env::var(super::portable::PORTABLE_ENV).ok()),
+    ) {
+        return None;
+    }
     dirs::config_dir().map(|d| d.join(POINTER_DIR_NAME).join(POINTER_FILE_NAME))
 }
 

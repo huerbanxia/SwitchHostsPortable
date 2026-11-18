@@ -12,6 +12,7 @@ pub mod error;
 pub mod fs_copy;
 pub mod manifest;
 pub mod paths;
+pub mod portable;
 pub mod state;
 pub mod transaction;
 pub mod trashcan;
@@ -72,6 +73,11 @@ pub struct AppState {
     /// `None` in the normal case. While `Some`, data-mutating commands are
     /// refused (see `require_data_dir_usable`) and migration is skipped.
     pub data_dir_recovery: Option<paths::DataDirRecovery>,
+    /// `true` when running in portable ("green") mode — the data root is
+    /// fixed at `Data/SwitchHosts` inside the green directory. Drives a few
+    /// UI and integration surfaces (logs, autostart) that otherwise would
+    /// touch the user profile.
+    pub is_portable: bool,
 }
 
 impl AppState {
@@ -93,6 +99,19 @@ impl AppState {
     /// 5. Enforce the saved history limit, skipping maintenance if the
     ///    configuration cannot be read or the data directory is unavailable.
     pub fn bootstrap() -> Result<Self, StorageError> {
+        let portable = portable::is_portable(
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+                .as_deref(),
+            Some(std::env::var(portable::PORTABLE_ENV).ok()),
+        );
+
+        // Resolve the active v5 root. In portable mode `default_root()` and
+        // `pointer_path()` already point at the fixed green `Data/` root and
+        // disable the custom-directory pointer, so this yields the portable
+        // root with no recovery. In installer mode this is the untouched
+        // original logic.
         let (mut paths, mut data_dir_recovery) = paths::resolve_root()?;
 
         // If the resolved root can't host the v5 layout — a file blocking a
@@ -171,6 +190,7 @@ impl AppState {
             is_will_quit: AtomicBool::new(false),
             last_geometry_persist_ms: AtomicU64::new(0),
             data_dir_recovery,
+            is_portable: portable,
         })
     }
 
@@ -244,6 +264,7 @@ mod tests {
             is_will_quit: AtomicBool::new(false),
             last_geometry_persist_ms: AtomicU64::new(0),
             data_dir_recovery: recovery,
+            is_portable: false,
         }
     }
 

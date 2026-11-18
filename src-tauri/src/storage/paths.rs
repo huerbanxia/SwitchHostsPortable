@@ -121,9 +121,33 @@ fn create_dir_all(path: &Path) -> Result<(), StorageError> {
     std::fs::create_dir_all(path).map_err(|e| StorageError::io(path.display().to_string(), e))
 }
 
-/// The default data root, `~/.SwitchHosts`. Independent of any custom
-/// pointer — used as the startup fallback and as the "reset" destination.
+/// The default data root.
+///
+/// - Portable ("green") mode: `<green>/Data/SwitchHosts` — the fixed
+///   writable data root inside the green directory, so nothing is left in
+///   the user profile and copying the whole directory is a backup.
+/// - Installer mode: `~/.SwitchHosts` (unchanged historic behaviour).
+///
+/// This is independent of any custom pointer and is used as the startup
+/// fallback and as the "reset" destination. Portable mode is decided from
+/// the `SWITCHHOSTS_PORTABLE` env var and/or a `.portable` marker near the
+/// executable (see [`super::portable`]); when inactive this is exactly the
+/// installer default. During unit tests neither signal is normally present,
+/// so this falls back to the home-dir default without disturbing test
+/// expectations.
 pub fn default_root() -> Result<PathBuf, StorageError> {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    let env = std::env::var(super::portable::PORTABLE_ENV).ok();
+    if let (Some(exe_dir), true) = (
+        exe_dir.as_deref(),
+        super::portable::is_portable(exe_dir.as_deref(), Some(env)),
+    ) {
+        if let Some(root) = super::portable::default_data_root(exe_dir) {
+            return Ok(root);
+        }
+    }
     let home = dirs::home_dir().ok_or(StorageError::HomeDirNotFound)?;
     Ok(home.join(".SwitchHosts"))
 }

@@ -1006,6 +1006,7 @@ mod tests {
                 is_will_quit: AtomicBool::new(false),
                 last_geometry_persist_ms: std::sync::atomic::AtomicU64::new(0),
                 data_dir_recovery: None,
+                is_portable: false,
             })
         }
     }

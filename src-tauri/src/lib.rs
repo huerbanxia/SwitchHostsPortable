@@ -175,6 +175,18 @@ pub fn run() {
         return;
     }
 
+    // Portable ("green") mode flag, decided once at startup from the
+    // `SWITCHHOSTS_PORTABLE` env var and/or a `.portable` marker near the
+    // executable (see `storage::portable`). Drives log location, autostart
+    // registration, and the launch-at-login reconciliation below.
+    let portable = storage::portable::is_portable(
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .as_deref(),
+        Some(std::env::var(storage::portable::PORTABLE_ENV).ok()),
+    );
+
     let builder = tauri::Builder::default()
         // Single-instance MUST be the first plugin so a second
         // launch is intercepted before any other plugin starts up.
@@ -182,21 +194,52 @@ pub fn run() {
             lifecycle::focus_main_on_second_instance(app, args, cwd)
         }));
 
-    let app = builder
-        // The login-start entry (LaunchAgent / run key / autostart file)
-        // passes a marker flag so a login launch is distinguishable from
-        // the user opening the app — see LOGIN_LAUNCH_ARG in lifecycle.
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec![lifecycle::LOGIN_LAUNCH_ARG]),
-        ))
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(
-            tauri_plugin_log::Builder::new()
+    // Configure the log plugin. In portable ("green") mode the log output is
+    // scoped to the green directory (`Data/Logs`) so nothing is written to
+    // the user profile; otherwise the platform default target is used.
+    let log_plugin = if portable {
+        match storage::portable::portable_log_dir(
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+                .as_deref()
+                .unwrap_or(std::path::Path::new(".")),
+        ) {
+            Some(logdir) => tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Info)
+                .targets(vec![
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+                        path: logdir,
+                        file_name: None,
+                    }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                ])
+                .build(),
+            None => tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
                 .build(),
-        )
+        }
+    } else {
+        tauri_plugin_log::Builder::new()
+            .level(log::LevelFilter::Info)
+            .build()
+    };
+
+    // The autostart plugin (which writes the Run key / LaunchAgent on the
+    // user profile) is only installed in installer mode. A portable build
+    // must not register itself with the OS login machinery.
+    let app = if portable {
+        builder.plugin(log_plugin)
+    } else {
+        builder
+            .plugin(tauri_plugin_autostart::init(
+                MacosLauncher::LaunchAgent,
+                Some(vec![lifecycle::LOGIN_LAUNCH_ARG]),
+            ))
+            .plugin(log_plugin)
+    }
+    .plugin(tauri_plugin_updater::Builder::new().build())
+    .plugin(tauri_plugin_dialog::init())
         // Popup menu item clicks are routed back to the renderer as Tauri
         // events: the menu item id equals the renderer-generated
         // `_click_evt` string, so forwarding the id verbatim as an event
@@ -275,7 +318,7 @@ pub fn run() {
                 let _ = app.emit(id, json!({ "_args": [] }));
             }
         })
-        .setup(|app| {
+        .setup(move |app| {
             // Plugins (including single-instance) initialize before setup.
             // Only the owning instance may clean temporary files or recover
             // an undo journal; a second launch must not roll back its work.
@@ -327,7 +370,9 @@ pub fn run() {
             // defaults to auto-check on), and a `new_version` dialog must not
             // cover the recovery dialog before they resolve their data
             // location. `run_auto_update_check` re-checks this as a backstop.
-            if app_state.data_dir_recovery.is_none() {
+            // Portable builds skip update checks entirely (a green install
+            // is "updated" by replacing the whole directory).
+            if app_state.data_dir_recovery.is_none() && !portable {
                 let update_checker_started = Arc::new(AtomicBool::new(false));
                 let update_checker_ready_app = app_handle.clone();
                 let update_checker_ready_flag = update_checker_started.clone();
@@ -488,44 +533,50 @@ pub fn run() {
             // Users may toggle login items from System Settings while the app
             // is closed; treat the OS as the source of truth so the
             // Preferences checkbox does not drift out of sync.
-            let want_launch_at_login = app_state
-                .config
-                .lock()
-                .expect("config mutex poisoned")
-                .launch_at_login;
-            let mut launch_at_login = want_launch_at_login;
-            match app_handle.autolaunch().is_enabled() {
-                Ok(actual) if actual != want_launch_at_login => {
-                    launch_at_login = actual;
-                    // Apply the relaunch policy below regardless, but don't
-                    // persist this OS-sync into a fallback default root while
-                    // the data directory is unavailable — the user hasn't
-                    // confirmed the location yet; it re-syncs after the
-                    // restart.
-                    if app_state.data_dir_recovery.is_none() {
-                        {
-                            let mut cfg = app_state.config.lock().expect("config mutex poisoned");
-                            cfg.launch_at_login = actual;
-                        }
-                        if let Err(e) = app_state.persist_config() {
-                            log::warn!("failed to persist launch_at_login sync from OS: {e}");
+            //
+            // In portable ("green") mode the autostart plugin is not installed
+            // (a portable build must not register itself with the OS login
+            // machinery), so this reconciliation is skipped entirely.
+            if !portable {
+                let want_launch_at_login = app_state
+                    .config
+                    .lock()
+                    .expect("config mutex poisoned")
+                    .launch_at_login;
+                let mut launch_at_login = want_launch_at_login;
+                match app_handle.autolaunch().is_enabled() {
+                    Ok(actual) if actual != want_launch_at_login => {
+                        launch_at_login = actual;
+                        // Apply the relaunch policy below regardless, but don't
+                        // persist this OS-sync into a fallback default root while
+                        // the data directory is unavailable — the user hasn't
+                        // confirmed the location yet; it re-syncs after the
+                        // restart.
+                        if app_state.data_dir_recovery.is_none() {
+                            {
+                                let mut cfg = app_state.config.lock().expect("config mutex poisoned");
+                                cfg.launch_at_login = actual;
+                            }
+                            if let Err(e) = app_state.persist_config() {
+                                log::warn!("failed to persist launch_at_login sync from OS: {e}");
+                            }
                         }
                     }
+                    Ok(actual) => {
+                        launch_at_login = actual;
+                    }
+                    Err(e) => {
+                        log::warn!("failed to query OS launch_at_login state: {e}");
+                    }
                 }
-                Ok(actual) => {
-                    launch_at_login = actual;
+                lifecycle::apply_launch_at_login_relaunch_policy(&app_handle, launch_at_login);
+                // Existing users' LaunchAgent plists predate the login-launch
+                // marker; rewrite them once so the #997 protections can engage
+                // on the next login.
+                #[cfg(target_os = "macos")]
+                if launch_at_login {
+                    lifecycle::ensure_launch_agent_carries_login_launch_arg(&app_handle);
                 }
-                Err(e) => {
-                    log::warn!("failed to query OS launch_at_login state: {e}");
-                }
-            }
-            lifecycle::apply_launch_at_login_relaunch_policy(&app_handle, launch_at_login);
-            // Existing users' LaunchAgent plists predate the login-launch
-            // marker; rewrite them once so the #997 protections can engage
-            // on the next login.
-            #[cfg(target_os = "macos")]
-            if launch_at_login {
-                lifecycle::ensure_launch_agent_carries_login_launch_arg(&app_handle);
             }
 
             Ok(())
@@ -615,6 +666,7 @@ pub fn run() {
             // data dir
             commands::get_data_dir,
             commands::get_data_dir_status,
+            commands::is_portable,
             commands::pick_data_dir,
             commands::apply_data_dir,
             commands::reset_data_dir,

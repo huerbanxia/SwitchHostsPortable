@@ -25,6 +25,7 @@ impl Fixture {
             is_will_quit: AtomicBool::new(false),
             last_geometry_persist_ms: AtomicU64::new(0),
             data_dir_recovery: None,
+            is_portable: false,
         };
         state.persist_config().unwrap();
         Self(state)

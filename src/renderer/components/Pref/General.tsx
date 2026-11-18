@@ -31,6 +31,19 @@ const General = (props: IProps) => {
   const { lang, locale } = useI18n()
   const { platform } = agent
 
+  // In portable ("green") mode some installer-only preferences have no
+  // effect (launch-at-login writes the user profile run-key; auto-update is
+  // replaced by "replace the whole directory"). We hide them so the UI does
+  // not offer options a portable build deliberately does not support.
+  const [portable, setPortable] = useState(false)
+
+  useEffect(() => {
+    actions
+      .isPortable()
+      .then((v) => setPortable(!!v))
+      .catch(() => setPortable(false))
+  }, [])
+
   // Privileged-helper state (macOS only). `not_supported` hides the row
   // — that covers non-macOS, macOS < 13, and unsigned/dev builds, where
   // the apply path uses the OS auth prompt instead.
@@ -194,6 +207,7 @@ const General = (props: IProps) => {
             checked={data.launch_at_login}
             onChange={(e) => onChange({ launch_at_login: e.target.checked })}
             label={lang.launch_at_login}
+            disabled={portable}
           />
         </Group>
       </Box>
@@ -248,6 +262,7 @@ const General = (props: IProps) => {
           onChange={(e) => onChange({ auto_check_update: e.target.checked })}
           label={lang.auto_check_update}
           description={lang.auto_check_update_desc}
+          disabled={portable}
           styles={checkboxDescriptionStyles}
         />
       </Box>

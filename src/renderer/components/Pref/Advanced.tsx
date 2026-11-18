@@ -68,6 +68,17 @@ const Advanced = (props: IProps) => {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [pickedDataDir, setPickedDataDir] = useState('')
   const [pickedIsEmpty, setPickedIsEmpty] = useState(true)
+  // Portable ("green") builds keep the data root fixed at
+  // `<green>/Data/SwitchHosts`, so the "change / reset data directory"
+  // controls are hidden and the path is shown read-only.
+  const [portable, setPortable] = useState(false)
+
+  useEffect(() => {
+    actions
+      .isPortable()
+      .then((v) => setPortable(!!v))
+      .catch(() => setPortable(false))
+  }, [])
 
   useEffect(() => {
     actions.getPathOfSystemHosts().then((hostsPath) => setHostsPath(hostsPath))
@@ -228,19 +239,21 @@ const Advanced = (props: IProps) => {
         <div>{lang.where_is_my_data}</div>
         <DescriptionText mb="8px">{lang.your_data_is}</DescriptionText>
         <PathLink link={dataDir} icon={<IconFolder size={16} />} />
-        <Group gap="12px" mt="12px">
-          <Button size="xs" variant="default" onClick={onChangeDataDir}>
-            {lang.change}
-          </Button>
-          <Button
-            size="xs"
-            variant="subtle"
-            disabled={!canReset}
-            onClick={() => setResetConfirmOpen(true)}
-          >
-            {lang.reset}
-          </Button>
-        </Group>
+        {portable ? null : (
+          <Group gap="12px" mt="12px">
+            <Button size="xs" variant="default" onClick={onChangeDataDir}>
+              {lang.change}
+            </Button>
+            <Button
+              size="xs"
+              variant="subtle"
+              disabled={!canReset}
+              onClick={() => setResetConfirmOpen(true)}
+            >
+              {lang.reset}
+            </Button>
+          </Group>
+        )}
       </div>
 
       <ChangeDataDirModal

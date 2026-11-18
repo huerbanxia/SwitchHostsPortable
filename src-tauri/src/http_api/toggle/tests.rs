@@ -125,6 +125,7 @@ impl Fixture {
             is_will_quit: AtomicBool::new(false),
             last_geometry_persist_ms: AtomicU64::new(0),
             data_dir_recovery: None,
+            is_portable: false,
         });
         let system = Arc::new(FakeHosts::default());
         *system.bytes.lock().unwrap() = b"original hosts\r\n".to_vec();

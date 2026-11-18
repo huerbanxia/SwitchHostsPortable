@@ -56,7 +56,14 @@ pub enum MigrationOutcome {
 pub fn run_if_needed(paths: &V5Paths) -> Result<MigrationOutcome, StorageError> {
     // An explicitly selected v5 root has its own store. Only follow Electron's
     // per-user preference when upgrading into the default v5 root.
-    let config_dir = if paths.root == crate::storage::paths::default_root()? {
+    let fs_portable = crate::storage::portable::is_portable(
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .as_deref(),
+        Some(std::env::var(crate::storage::portable::PORTABLE_ENV).ok()),
+    );
+    let config_dir = if !fs_portable && paths.root == crate::storage::paths::default_root()? {
         dirs::config_dir()
     } else {
         None

@@ -21,10 +21,12 @@
     "build:renderer": "vite build --config ./vite.render.config.mts",
     "build:renderer:tauri": "node scripts/sync-tauri-version.mjs && vite build --config ./vite.render.config.mts --outDir ../../build-tauri --emptyOutDir",
     "build:universal-helper": "node scripts/bundle-universal-helper.mjs",
+    "build:portable": "node ./scripts/build-portable.mjs",
     "sort-lang": "node ./scripts/sort-lang.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "tauri:build:portable": "tauri build --bundles none && npm run build:portable",
     "tauri:info": "tauri info",
     "version": "node scripts/sync-tauri-version.mjs && git add src/version.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock"
   },

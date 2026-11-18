@@ -31,6 +31,8 @@
 
 前往 [GitHub Releases](https://github.com/oldj/SwitchHosts/releases) 下载，或在 Windows 上通过 [Chocolatey](https://community.chocolatey.org/packages/switchhosts) 安装：`choco install switchhosts`。
 
+> 需要**绿色版（免安装，数据放在程序目录 `Data/`）**？见 [绿色版使用与构建说明](docs/portable.zh_cn.md)。
+
 ## 文档与开发
 
 编辑 hosts、数据备份、本地 HTTP API 和构建环境要求详见[使用与开发指南](docs/guide.zh_hans.md)。
