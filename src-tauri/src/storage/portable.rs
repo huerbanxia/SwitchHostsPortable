@@ -48,13 +48,19 @@ pub const DATA_ROOT_NAME: &str = "SwitchHosts";
 /// Logs sub-directory under `Data/`.
 pub const LOG_DIR_NAME: &str = "Logs";
 
-/// Whether a `.portable` marker is present at or above `exe_dir`, or the
-/// `SWITCHHOSTS_PORTABLE` env var is set.
+/// Whether a `.portable` marker is present at or above `exe_dir`, the
+/// `SWITCHHOSTS_PORTABLE` env var is set, **or** `exe_dir` sits inside the
+/// PortableApps-style layout (`App/` + `Data/` siblings).
 ///
 /// `exe_dir` is the directory containing the executable (or a cached value
 /// of it; `None` if it cannot be resolved). `env_override` should pass a
 /// cached `std::env::var(PORTABLE_ENV)`; a `Some(Some(_))` with any
 /// non-empty value forces portable mode on, exactly like marking `.portable`.
+///
+/// Checking the layout is what makes detection robust regardless of which
+/// exe is launched: the top-level `SwitchHostsPortable.exe` sits at the
+/// green root (next to `Data/`), while `App/SwitchHosts/SwitchHosts.exe`
+/// sits two levels down. Both are inside the green layout.
 pub fn is_portable(exe_dir: Option<&Path>, env_override: Option<Option<String>>) -> bool {
     if env_override
         .flatten()
@@ -69,7 +75,13 @@ pub fn is_portable(exe_dir: Option<&Path>, env_override: Option<Option<String>>)
     };
     let mut current = dir.to_path_buf();
     for _ in 0..=MAX_ANCESTOR_DEPTH {
+        // A portable marker in this directory.
         if current.join(PORTABLE_MARKER).exists() {
+            return true;
+        }
+        // The green layout: this directory directly contains `App/` and
+        // `Data/` (the PortableApps convention), so it is a green root.
+        if current.join(DATA_DIR).is_dir() && current.join("App").is_dir() {
             return true;
         }
         match current.parent() {
@@ -188,6 +200,21 @@ mod tests {
         let exe = green.join("App/SwitchHosts");
         std::fs::create_dir_all(&exe).unwrap();
         assert!(!is_portable(Some(&exe), None));
+        let _ = std::fs::remove_dir_all(&green);
+    }
+
+    #[test]
+    fn layout_app_data_detects_portable_even_without_marker() {
+        // PortableApps layout: `App/` + `Data/` as siblings. No marker file.
+        // Launching from the green-root launcher (depth 0) must still detect
+        // portable mode by layout alone.
+        let green = tmp("green-layout");
+        std::fs::create_dir_all(green.join("App/SwitchHosts")).unwrap();
+        std::fs::create_dir_all(green.join(DATA_DIR)).unwrap();
+        let launcher = green.join("SwitchHostsPortable.exe");
+        assert!(is_portable(Some(&launcher), None));
+        let inner = green.join("App/SwitchHosts");
+        assert!(is_portable(Some(&inner), None));
         let _ = std::fs::remove_dir_all(&green);
     }
 

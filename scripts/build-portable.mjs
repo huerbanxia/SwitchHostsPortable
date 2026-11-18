@@ -58,7 +58,7 @@ const appExe = possibleApps.find((p) => existsSync(p))
 if (!appExe) {
   console.error(
     `[portable] release build not found. Build the app first, e.g.\n` +
-      `  npm run tauri:build -- --bundles none\n` +
+      `  npm run tauri:build:portable\n` +
       `Looked for: ${possibleApps.join(' | ')}`,
   )
   process.exit(1)
