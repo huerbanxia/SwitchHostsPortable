@@ -42,6 +42,13 @@ npm run tauri:dev    # development
 npm run tauri:build  # production build
 ```
 
+## Acknowledgements
+
+This portable ("green") build is a re-packaging of the original project. Many thanks to:
+
+- **[oldj/SwitchHosts](https://github.com/oldj/SwitchHosts)** and all its contributors — the original SwitchHosts app that this portable edition is built from. This fork adds a Windows portable layout (`App/` + `Data/`) so the whole green directory can be moved around, copied, or backed up as one unit.
+- The **Tauri** ([tauri.app](https://tauri.app/)) and **React** teams for the underlying frameworks.
+
 ## Copyright
 
 SwitchHosts is a free and open source software, it is released under the [Apache License](./LICENSE).

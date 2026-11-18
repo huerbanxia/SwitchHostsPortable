@@ -43,6 +43,13 @@ npm run tauri:dev    # 开发
 npm run tauri:build  # 生产构建
 ```
 
+## 鸣谢
+
+本绿色版基于原项目重新打包而成，特别感谢：
+
+- **[oldj/SwitchHosts](https://github.com/oldj/SwitchHosts)** 及其所有贡献者——本便携版所基于的原始 SwitchHosts 应用。本 fork 增加了 Windows 便携目录布局（`App/` + `Data/`），使整个绿色版目录可整体移动、复制或作为单元备份。
+- **Tauri**（[tauri.app](https://tauri.app/)）与 **React** 团队提供的底层框架。
+
 ## 版权
 
 SwitchHosts 是一个免费开源软件，基于 Apache-2.0 协议发布。
